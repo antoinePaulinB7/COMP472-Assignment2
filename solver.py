@@ -182,13 +182,10 @@ def board_equals(board_a, board_b):
             return False
     return True
 
-def h0(state):
-    if state.cursor == 7:
-        return 1
-    else:
-        return 0
-
 def ucs(puzzle):
+    search_path = []
+    start_time = time.time()
+
     initial_state = State(puzzle, [], 0, -1, [])
     open_list = [initial_state]
     closed_list = []
@@ -199,9 +196,13 @@ def ucs(puzzle):
     while len(open_list) > 0:
         open_list.sort(key=h_uniform)
         current_node = copy.deepcopy(open_list.pop(0))
-        
+        search_path.append(copy.deepcopy(current_node))
+
         if is_solved(current_node):
-            return current_node
+            return (current_node, search_path, (time.time() - start_time))
+
+        if time.time() - start_time > 60:
+            return (search_path)
         closed_list.append(current_node)
 
         new_nodes = moves(current_node)
@@ -228,27 +229,38 @@ def ucs(puzzle):
     
     return []
 
-def gbfs(puzzle, h1):
+def gbfs(puzzle, h):
+    search_path = []
+    start_time = time.time()
     initial_state = State(puzzle, [], 0, -1, [])
     
     open_list = [initial_state]
     closed_list = []
 
     while len(open_list) > 0:
-        open_list.sort(key=h1)
+        open_list.sort(key=h)
         current_node = copy.deepcopy(open_list.pop(0))
+        search_path.append(copy.deepcopy(current_node))
+
+        if is_solved(current_node):
+            return (current_node, search_path, (time.time() - start_time))
+
+        if time.time() - start_time > 60:
+            return (search_path)
+
         closed_list.append(current_node)
         new_nodes = moves(current_node)
 
         for new_node in new_nodes:
-            if is_solved(new_node):
-                return new_node
             if new_node not in open_list and new_node not in closed_list:
                 open_list.append(new_node)
     
     return []
 
 def a_star(puzzle, h):
+    search_path = []
+    start_time = time.time()
+
     initial_state = State(puzzle, [], 0, -1, [])
     open_list = [initial_state]
     closed_list = []
@@ -259,9 +271,14 @@ def a_star(puzzle, h):
     while len(open_list) > 0:
         open_list.sort(key=h_star)
         current_node = copy.deepcopy(open_list.pop(0))
-        
+        search_path.append(copy.deepcopy(current_node))
+
         if is_solved(current_node):
-            return current_node
+            return (current_node, search_path, (time.time() - start_time))
+
+        if time.time() - start_time > 60:
+            return (search_path)
+            
         closed_list.append(current_node)
 
         new_nodes = moves(current_node)
@@ -287,7 +304,12 @@ def a_star(puzzle, h):
                 open_list.append(new_node)
     
     return []
-            
+
+def h0(state):
+    if state.cursor == 7:
+        return 1
+    else:
+        return 0            
 
 def h1(state):
     return min(board_difference(state.board, [1,2,3,4,5,6,7,0]), board_difference(state.board, [1,3,5,7,2,4,6,0]))
@@ -326,24 +348,20 @@ def board_difference(board_a, board_b, ignore_zero = False):
     return difference
 
 def solve(puzzle):
-    # print(ucs(puzzle))
-    start_time = time.time()
+    print("UCS")
+    print(ucs(puzzle))
+
     print("GBFS h1")
     print(gbfs(puzzle, h1))
-    print("--- %s seconds ---" % (time.time() - start_time))
-    start_time = time.time()
+
     print("A* h1")
     print(a_star(puzzle, h1))
-    print("--- %s seconds ---" % (time.time() - start_time))
 
-    start_time = time.time()
     print("GBFS h2")
     print(gbfs(puzzle, h2))
-    print("--- %s seconds ---" % (time.time() - start_time))
-    start_time = time.time()
+
     print("A* h2")
     print(a_star(puzzle, h2))
-    print("--- %s seconds ---" % (time.time() - start_time))
 
 def main():
     print("Solutions for [3, 0, 1, 4, 2, 6, 5, 7]")
