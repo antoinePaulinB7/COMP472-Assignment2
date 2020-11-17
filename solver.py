@@ -1,4 +1,5 @@
 import copy
+import time
 
 class MoveType:
     REGULAR = 1
@@ -247,13 +248,13 @@ def gbfs(puzzle, h1):
     
     return []
 
-def a_star(puzzle, h1):
+def a_star(puzzle, h):
     initial_state = State(puzzle, [], 0, -1, [])
     open_list = [initial_state]
     closed_list = []
 
     def h_star(state):
-        return h1(state) + state.cost
+        return h(state) + state.cost
 
     while len(open_list) > 0:
         open_list.sort(key=h_star)
@@ -291,17 +292,58 @@ def a_star(puzzle, h1):
 def h1(state):
     return min(board_difference(state.board, [1,2,3,4,5,6,7,0]), board_difference(state.board, [1,3,5,7,2,4,6,0]))
 
-def board_difference(board_a, board_b):
+def h2(state):
+    return min(manning_distance(state.board, [1,2,3,4,5,6,7,0]), manning_distance(state.board, [1,3,5,7,2,4,6,0]))
+
+def manning_distance(board_a, solution):
+    distance = 0
+    for i in range(8):
+        curr = board_a[i]
+        t = 0
+        for s in range(8):
+            if solution[s] == curr:
+                t = s
+                break
+        
+        if i < 4 and t < 4:
+            distance += (abs(i-t))
+        elif i > 3 and t > 3:
+            distance += (abs(i-t))
+        else:
+            i = i % 4
+            t = t % 4
+            distance +=(abs(i-t) + 1)
+    return distance
+
+# Testing shows that ignoring zero is actually worse
+def board_difference(board_a, board_b, ignore_zero = False):
     difference = 0
     for i in range(8):
+        if board_a[i] == 0 and not ignore_zero:
+            continue
         if board_a[i] != board_b[i]:
             difference += 1
     return difference
 
 def solve(puzzle):
-    print(ucs(puzzle))
+    # print(ucs(puzzle))
+    start_time = time.time()
+    print("GBFS h1")
     print(gbfs(puzzle, h1))
+    print("--- %s seconds ---" % (time.time() - start_time))
+    start_time = time.time()
+    print("A* h1")
     print(a_star(puzzle, h1))
+    print("--- %s seconds ---" % (time.time() - start_time))
+
+    start_time = time.time()
+    print("GBFS h2")
+    print(gbfs(puzzle, h2))
+    print("--- %s seconds ---" % (time.time() - start_time))
+    start_time = time.time()
+    print("A* h2")
+    print(a_star(puzzle, h2))
+    print("--- %s seconds ---" % (time.time() - start_time))
 
 def main():
     print("Solutions for [3, 0, 1, 4, 2, 6, 5, 7]")
