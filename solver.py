@@ -329,9 +329,9 @@ def h1(state):
     return min(board_difference(state.board, [1,2,3,4,5,6,7,0]), board_difference(state.board, [1,3,5,7,2,4,6,0]))
 
 def h2(state):
-    return min(manning_distance(state.board, [1,2,3,4,5,6,7,0]), manning_distance(state.board, [1,3,5,7,2,4,6,0]))
+    return min(manhattan_distance(state.board, [1,2,3,4,5,6,7,0]), manhattan_distance(state.board, [1,3,5,7,2,4,6,0]))
 
-def manning_distance(board_a, solution):
+def manhattan_distance(board_a, solution):
     distance = 0
     for i in range(8):
         curr = board_a[i]
@@ -466,8 +466,6 @@ def str_to_board(string):
 
 def solve_from_file(filename):
     file = open(filename, "r")
-
-    puzzle_number = 0
 
     for (i, puzzle_str) in enumerate(file):
         print("Solving " + puzzle_str)
@@ -619,7 +617,21 @@ def analysis():
     # gbfs_h2_stats = Stats()
     # astar_h2_stats = Stats()
 
-    
+def demo(filename):
+    file = open(filename, "r")
+
+    puzzle_number = 0
+
+    for (i, puzzle_str) in enumerate(file):
+        print("Solving " + puzzle_str)
+        print("solving with ucs...")
+        output_files(ucs(str_to_board(puzzle_str)), i, "ucs", "demo/")
+        
+        print("solving with gbfs h1...")
+        output_files(gbfs(str_to_board(puzzle_str), h0), i, "gbfs-h0", "demo/")
+
+        print("solving with astar h1...")
+        output_files(a_star(str_to_board(puzzle_str), h0), i, "astar-h0", "demo/")
 
 def main():
     if len(sys.argv) == 1:
@@ -634,8 +646,11 @@ def main():
             generate_puzzles(sys.argv[1])
             solve_from_file(sys.argv[1])
     elif len(sys.argv) == 3:
-        generate_puzzles(sys.argv[1], int(sys.argv[2]))
-        solve_from_file(sys.argv[1])
+        if sys.argv[1] == "demo":
+            demo(sys.argv[2])
+        else:
+            generate_puzzles(sys.argv[1], int(sys.argv[2]))
+            solve_from_file(sys.argv[1])
     elif len(sys.argv) == 10:
         filename = sys.argv[1]
         puzzle_cli = sys.argv[2:]
