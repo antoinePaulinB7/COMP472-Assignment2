@@ -326,7 +326,10 @@ def h0(state):
         return 0            
 
 def h1(state):
-    return min(board_difference(state.board, [1,2,3,4,5,6,7,0]), board_difference(state.board, [1,3,5,7,2,4,6,0]))
+    return min(
+        board_difference(state.board, [1,2,3,4,5,6,7,0]),
+        board_difference(state.board, [1,3,5,7,2,4,6,0])
+    )
 
 def h2(state):
     return min(manhattan_distance(state.board, [1,2,3,4,5,6,7,0]), manhattan_distance(state.board, [1,3,5,7,2,4,6,0]))
@@ -351,7 +354,6 @@ def manhattan_distance(board_a, solution):
             distance +=(abs(i-t) + 1)
     return distance
 
-# Testing shows that ignoring zero is actually worse
 def board_difference(board_a, board_b, ignore_zero = False):
     difference = 0
     for i in range(8):
@@ -512,14 +514,14 @@ def generate_puzzles(filename, quantity = 50):
 class Stats:
     solution_lengths = []
     search_path_lengths = []
-    no_solutions = [] # 1 for no solution, zero otherwise
+    no_solutions = []
     costs = []
     execution_times = []
 
     def __init__(self):
         self.solution_lengths = []
         self.search_path_lengths = []
-        self.no_solutions = [] # 1 for no solution, zero otherwise
+        self.no_solutions = []
         self.costs = []
         self.execution_times = []
 
@@ -611,11 +613,6 @@ def analysis():
     print("A* h2")
     astar_h2 = analyze_algo("astar-h2")
     astar_h2.averages()
-
-    # gbfs_h1_stats = Stats()
-    # astar_h1_stats = Stats()
-    # gbfs_h2_stats = Stats()
-    # astar_h2_stats = Stats()
 
 def demo(filename):
     file = open(filename, "r")
