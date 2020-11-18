@@ -17,8 +17,6 @@ class State:
     history = []
 
     def __init__(self, board, path, cost, cursor, history):
-        if len(board) != 8:
-            raise Exception("Bad Board: wrong length")
         self.board = board.copy()
         self.path = path.copy()
         self.cost = cost
@@ -512,24 +510,125 @@ def generate_puzzles(filename, quantity = 50):
         file.write(board_to_str(puzzle)+"\n")
 
     file.close()
+
+class Stats:
+    solution_lengths = []
+    search_path_lengths = []
+    no_solutions = [] # 1 for no solution, zero otherwise
+    costs = []
+    execution_times = []
+
+    def __init__(self):
+        self.solution_lengths = []
+        self.search_path_lengths = []
+        self.no_solutions = [] # 1 for no solution, zero otherwise
+        self.costs = []
+        self.execution_times = []
+
+    def averages(self):
+        print("Solution length: average %.2f, total %d" % (sum(self.solution_lengths) / len(self.solution_lengths), sum(self.solution_lengths)))
+        print("Search path length: average %.2f, total %d" % (sum(self.search_path_lengths) / len(self.search_path_lengths), sum(self.search_path_lengths)))
+        print("No solutions: average %.2f %%, total %d" % (100 * sum(self.no_solutions) / len(self.no_solutions), sum(self.no_solutions)))
+        print("Cost: average %.2f, total %d" % (sum(self.costs) / len(self.costs), sum(self.costs)))
+        print("Execution times: average %f s, total %.2fs" % (sum(self.execution_times) / len(self.execution_times), sum(self.execution_times)))
+
+    def add_solution_length(self, length):
+        self.solution_lengths.append(length)
+    
+    def add_search_path_lengths(self, length):
+        self.search_path_lengths.append(length)
+
+    def add_no_solution(self, sol):
+        self.no_solutions.append(sol)
+
+    def add_cost(self, cos):
+        self.costs.append(cos)
+
+    def add_time(self, tim):
+        self.execution_times.append(tim)
+
+
+def analyze_algo(algo_name):
+    stats = Stats()
+
+    puzzle_number = 0
+    search_file_name = "results/%d_%s_search.txt" % (puzzle_number, algo_name)
+    while os.path.isfile(search_file_name):
+        file = open(search_file_name, "r")
+        for i, l in enumerate(file):
+            pass
+
+        stats.add_search_path_lengths(i)
+
+        puzzle_number += 1
+        search_file_name = "results/%d_%s_search.txt" % (puzzle_number, algo_name)
+
+    puzzle_number = 0
+    solution_file_name = "results/%d_%s_solution.txt" % (puzzle_number, algo_name)
+    while os.path.isfile(solution_file_name):
+        file = open(solution_file_name, "r")
+        line = ""
+        
+        solution_length = 0
+
+        for l in file:
+            line = l
+            solution_length += 1
+
+        if line == "no solution":
+            stats.add_no_solution(1)
+        else:
+            stats.add_no_solution(0)
+            stats.add_solution_length(solution_length)
+
+            info = line.split()
+
+            cost, execution_time = int(info[0]), float(info[1])
+            stats.costs.append(cost)
+            stats.execution_times.append(execution_time)
+
+        puzzle_number += 1
+        solution_file_name = "results/%d_%s_solution.txt" % (puzzle_number, algo_name)
+    
+    return stats
+
+
+def analysis():
+    print("UCS")
+    ucs_stats = analyze_algo("ucs")
+    ucs_stats.averages()
+    
+    print("GBFS h1")
+    gbfs_h1_stats = analyze_algo("gbfs-h1")
+    gbfs_h1_stats.averages()
+
+    print("A* h1")
+    astar_h1 = analyze_algo("astar-h1")
+    astar_h1.averages()
+
+    print("GBFS h2")
+    gbfs_h2_stats = analyze_algo("gbfs-h2")
+    gbfs_h2_stats.averages()
+    
+    print("A* h2")
+    astar_h2 = analyze_algo("astar-h2")
+    astar_h2.averages()
+
+    # gbfs_h1_stats = Stats()
+    # astar_h1_stats = Stats()
+    # gbfs_h2_stats = Stats()
+    # astar_h2_stats = Stats()
+
     
 
 def main():
-    # print("Solutions for [3, 0, 1, 4, 2, 6, 5, 7]")
-    # solve([3, 0, 1, 4, 2, 6, 5, 7])
-    
-    # print("Solutions for [6, 3, 4, 7, 1, 2, 5, 0]")
-    # solve([6, 3, 4, 7, 1, 2, 5, 0])
-    
-    # print("Solutions for [1, 0, 3, 6, 5, 2, 7, 4]")
-    # solve([1, 0, 3, 6, 5, 2, 7, 4])
-
-    # print(board_to_str([1, 0, 3, 6, 5, 2, 7, 4]))
     if len(sys.argv) == 1:
         print("Running samples")
         solve_from_file("samplePuzzles.txt")
     elif len(sys.argv) == 2:
-        if os.path.isfile(sys.argv[1]):
+        if sys.argv[1] == "analyze":
+            analysis()
+        elif os.path.isfile(sys.argv[1]):
             solve_from_file(sys.argv[1])
         else:
             generate_puzzles(sys.argv[1])
