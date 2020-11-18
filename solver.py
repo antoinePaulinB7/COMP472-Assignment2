@@ -1,5 +1,8 @@
 import copy
 import time
+import os
+import sys
+import random
 
 class MoveType:
     REGULAR = 1
@@ -15,7 +18,7 @@ class State:
 
     def __init__(self, board, path, cost, cursor, history):
         if len(board) != 8:
-            raise Exception("Bad Board: wrong length") 
+            raise Exception("Bad Board: wrong length")
         self.board = board.copy()
         self.path = path.copy()
         self.cost = cost
@@ -42,7 +45,7 @@ class State:
     def move(self, swap_position, move_type):
         self.history.append(self.board.copy())
         swap_value = self.board[swap_position]
-        self.path.append(swap_value)
+        self.path.append((swap_value, move_type))
         self.cost += move_type
         self.board[self.cursor], self.board[swap_position] = self.board[swap_position], self.board[self.cursor]
         self.cursor = swap_position
@@ -190,19 +193,24 @@ def ucs(puzzle):
     open_list = [initial_state]
     closed_list = []
 
-    def h_uniform(state):
+    def g_uniform(state):
         return state.cost
 
     while len(open_list) > 0:
-        open_list.sort(key=h_uniform)
+        open_list.sort(key=g_uniform)
         current_node = copy.deepcopy(open_list.pop(0))
-        search_path.append(copy.deepcopy(current_node))
+        
+        g_value = current_node.cost
+        h_value = 0
+        f_value = g_value+h_value
+        search_path.append((f_value, g_value, h_value, copy.deepcopy(current_node.board)))
 
         if is_solved(current_node):
             return (current_node, search_path, (time.time() - start_time))
 
         if time.time() - start_time > 60:
-            return (search_path)
+            return [(search_path)]
+        
         closed_list.append(current_node)
 
         new_nodes = moves(current_node)
@@ -240,13 +248,17 @@ def gbfs(puzzle, h):
     while len(open_list) > 0:
         open_list.sort(key=h)
         current_node = copy.deepcopy(open_list.pop(0))
-        search_path.append(copy.deepcopy(current_node))
+
+        g_value = 0
+        h_value = h(current_node)
+        f_value = g_value+h_value
+        search_path.append((f_value, g_value, h_value, copy.deepcopy(current_node.board)))
 
         if is_solved(current_node):
             return (current_node, search_path, (time.time() - start_time))
 
         if time.time() - start_time > 60:
-            return (search_path)
+            return [(search_path)]
 
         closed_list.append(current_node)
         new_nodes = moves(current_node)
@@ -271,13 +283,17 @@ def a_star(puzzle, h):
     while len(open_list) > 0:
         open_list.sort(key=h_star)
         current_node = copy.deepcopy(open_list.pop(0))
-        search_path.append(copy.deepcopy(current_node))
+
+        g_value = current_node.cost
+        h_value = h(current_node)
+        f_value = g_value+h_value
+        search_path.append((f_value, g_value, h_value, copy.deepcopy(current_node.board)))
 
         if is_solved(current_node):
             return (current_node, search_path, (time.time() - start_time))
 
         if time.time() - start_time > 60:
-            return (search_path)
+            return [(search_path)]
             
         closed_list.append(current_node)
 
@@ -363,15 +379,178 @@ def solve(puzzle):
     print("A* h2")
     print(a_star(puzzle, h2))
 
+def solve_and_output(puzzle, puzzle_number = "test"):
+    print("solving with ucs...")
+    output_files(ucs(puzzle), puzzle_number, "ucs")
+    
+    print("solving with gbfs h1...")
+    output_files(gbfs(puzzle, h1), puzzle_number, "gbfs-h1")
+
+    print("solving with astar h1...")
+    output_files(a_star(puzzle, h1), puzzle_number, "astar-h1")
+    
+    print("solving with gbfs h2...")
+    output_files(gbfs(puzzle, h2), puzzle_number, "gbfs-h2")
+
+    print("solving with astar h2...")
+    output_files(a_star(puzzle, h2), puzzle_number, "astar-h2")
+
+
+def output_files(result, puzzle_number, algo, directory = "results/"):
+    puzzle_number = str(puzzle_number)
+
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    f_solution = open(directory+puzzle_number+"_"+algo+"_solution.txt", "w")
+    f_search = open(directory+puzzle_number+"_"+algo+"_search.txt", "w")
+
+    solution = None
+    search_path = []
+    time_to_solve = 0
+
+    if len(result) == 3:
+        solution = result[0]
+        search_path = result[1]
+        time_to_solve = result[2]
+    elif len(result) == 1:
+        search_path = result[0]
+        solution = None
+    else:
+        f_solution.close()
+        f_search.close()
+
+        print(solution)
+        print("Solution is malformed")
+
+        return
+
+    if solution is None:
+        f_solution.write("no solution")
+    else:
+        board_string = board_to_str(solution.history[0])
+        f_solution.write("%d %d %s\n" % (0, 0, board_string))
+
+        index = 1
+
+        for (tile, cost) in solution.path:
+            if index < len(solution.history):
+                board_string = board_to_str(solution.history[index])
+            else:
+                board_string = board_to_str(solution.board)
+            f_solution.write("%d %d %s\n" % (tile, cost, board_string))
+            index += 1
+        
+        f_solution.write("%d %f" % (solution.cost, time_to_solve))
+
+    for (f, g, n, board) in search_path:
+        f_search.write("%d %d %d %s\n" % (f, g, n, board_to_str(board)))
+
+    f_solution.close()
+    f_search.close()
+
+def board_to_str(board):
+    string = ""
+
+    for i in range(len(board) - 1):
+        string += str(board[i]) + " "
+    string += str(board[-1])
+
+    return string
+
+def str_to_board(string):
+    board = [int(i) for i in string.split() if i.isdigit()]
+
+    if len(board) == 8:
+        return board
+    else:
+        return None
+
+def solve_from_file(filename):
+    file = open(filename, "r")
+
+    puzzle_number = 0
+
+    for (i, puzzle_str) in enumerate(file):
+        print("Solving " + puzzle_str)
+        solve_and_output(str_to_board(puzzle_str), i)
+
+def validate_puzzle(puzzle):
+    valid = True
+    error = ""
+    if len(puzzle) != 8:
+        error += "wrong length\n"
+        valid = False
+    
+    tester = [0, 0, 0, 0, 0, 0, 0, 0]
+    
+    for i in puzzle:
+        tester[i] += 1
+
+    for i in range(len(tester)):
+        if tester[i] != 1:
+            valid = False
+            error += ("Number of %d: %d\n" % (i, tester[i]))
+
+    if valid:
+        print("Puzzle is valid")
+    else:
+        print("Puzzle is invalid!")
+        print(error)
+
+    return valid
+
+def generate_puzzles(filename, quantity = 50):
+    puzzle = [1, 2, 3, 4, 5, 6, 7, 0]
+    
+    file = open(filename, "w")
+
+    print("Generating puzzle and writing file")
+    for i in range(quantity):
+        random.shuffle(puzzle)
+        print(puzzle)
+        file.write(board_to_str(puzzle)+"\n")
+
+    file.close()
+    
+
 def main():
-    print("Solutions for [3, 0, 1, 4, 2, 6, 5, 7]")
-    solve([3, 0, 1, 4, 2, 6, 5, 7])
+    # print("Solutions for [3, 0, 1, 4, 2, 6, 5, 7]")
+    # solve([3, 0, 1, 4, 2, 6, 5, 7])
     
-    print("Solutions for [6, 3, 4, 7, 1, 2, 5, 0]")
-    solve([6, 3, 4, 7, 1, 2, 5, 0])
+    # print("Solutions for [6, 3, 4, 7, 1, 2, 5, 0]")
+    # solve([6, 3, 4, 7, 1, 2, 5, 0])
     
-    print("Solutions for [1, 0, 3, 6, 5, 2, 7, 4]")
-    solve([1, 0, 3, 6, 5, 2, 7, 4])
+    # print("Solutions for [1, 0, 3, 6, 5, 2, 7, 4]")
+    # solve([1, 0, 3, 6, 5, 2, 7, 4])
+
+    # print(board_to_str([1, 0, 3, 6, 5, 2, 7, 4]))
+    if len(sys.argv) == 1:
+        print("Running samples")
+        solve_from_file("samplePuzzles.txt")
+    elif len(sys.argv) == 2:
+        if os.path.isfile(sys.argv[1]):
+            solve_from_file(sys.argv[1])
+        else:
+            generate_puzzles(sys.argv[1])
+            solve_from_file(sys.argv[1])
+    elif len(sys.argv) == 3:
+        generate_puzzles(sys.argv[1], int(sys.argv[2]))
+        solve_from_file(sys.argv[1])
+    elif len(sys.argv) == 10:
+        filename = sys.argv[1]
+        puzzle_cli = sys.argv[2:]
+        puzzle = []
+
+        for i in range(8):
+            puzzle.append(int(puzzle_cli[i]))
+
+        if validate_puzzle(puzzle):
+            solve_and_output(puzzle, filename)
+    else:
+        print(sys.argv)
+        print("arguments invalid")
+        
 
 if __name__ == "__main__":
     main()
